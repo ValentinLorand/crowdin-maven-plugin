@@ -1,4 +1,4 @@
-package com.googlecode.crowdin.maven;
+package com.googlecode.crowdin.maven.mojo;
 
 import com.googlecode.crowdin.maven.tool.SortedProperties;
 import org.apache.maven.model.Resource;

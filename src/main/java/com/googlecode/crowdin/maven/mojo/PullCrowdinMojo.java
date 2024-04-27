@@ -1,18 +1,21 @@
-package com.googlecode.crowdin.maven;
+package com.googlecode.crowdin.maven.mojo;
 
+import com.googlecode.crowdin.maven.dao.CrowdinFileDAO;
+import com.googlecode.crowdin.maven.dao.CrowdinFileDAOImpl;
+import com.googlecode.crowdin.maven.dao.CrowdinTranslationDAO;
+import com.googlecode.crowdin.maven.dao.CrowdinTranslationDAOImpl;
+import com.googlecode.crowdin.maven.tool.CrowdinApiUtils;
 import com.googlecode.crowdin.maven.tool.SortedProperties;
 import com.googlecode.crowdin.maven.tool.SpecialArtifact;
 import com.googlecode.crowdin.maven.tool.TranslationFile;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
 import org.apache.maven.artifact.Artifact;
-import org.apache.maven.artifact.DefaultArtifact;
 import org.apache.maven.artifact.resolver.filter.ArtifactFilter;
 import org.apache.maven.artifact.resolver.filter.ScopeArtifactFilter;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.DefaultProjectBuildingRequest;
@@ -31,14 +34,16 @@ import java.util.zip.ZipInputStream;
 /**
  * Pull crowdin translations in this project, looking dependencies
  */
-@Mojo(name = "pull", threadSafe = true)
+@Mojo(name = "pull", threadSafe = true, defaultPhase = LifecyclePhase.COMPILE)
 public class PullCrowdinMojo extends AbstractCrowdinMojo {
 
-    @Component
-    protected DependencyGraphBuilder dependencyGraphBuilder;
+    @Parameter(defaultValue = "${session}", readonly = true, required = true)
+    private MavenSession session;
 
-    @Parameter
-    protected MavenSession session;
+    @Component(hint = "default")
+    private DependencyGraphBuilder dependencyGraphBuilder;
+
+    CrowdinTranslationDAO crowdinDAO;
 
     private void cleanFolders(Set<TranslationFile> translationFiles) {
         if (messagesOutputDirectory.exists()) {
@@ -87,7 +92,7 @@ public class PullCrowdinMojo extends AbstractCrowdinMojo {
         return false;
     }
 
-    private boolean deleteFolder(File folder, boolean deleteRoot) {
+    private void deleteFolder(File folder, boolean deleteRoot) {
         File[] listFiles = folder.listFiles();
         if (listFiles != null) {
             for (File file : listFiles) {
@@ -95,70 +100,50 @@ public class PullCrowdinMojo extends AbstractCrowdinMojo {
                     if (file.isDirectory()) {
                         deleteFolder(file, true);
                     }
-                    if (!file.delete()) {
-                        return false;
-                    }
                     getLog().debug("Deleted " + file);
                 }
             }
         }
         if (deleteRoot) {
-            boolean deleted = folder.delete();
+            folder.delete();
             getLog().debug("Deleted " + folder);
-            return deleted;
-        } else {
-            return true;
         }
     }
 
-    private Map<TranslationFile, byte[]> downloadTranslations() throws MojoExecutionException {
+    private Map<TranslationFile, byte[]> pullTranslations() throws MojoExecutionException {
         try {
-            String uri = "http://api.crowdin.net/api/project/" + authenticationInfo.getUserName()
-                    + "/download/all.zip?key=" + authenticationInfo.getPassword();
-            getLog().debug("Calling " + uri);
-            HttpGet getMethod = new HttpGet(uri);
-            HttpResponse response = client.execute(getMethod);
-            int returnCode = response.getStatusLine().getStatusCode();
-            getLog().debug("Return code : " + returnCode);
+            Map<TranslationFile, byte[]> translations = new HashMap<>();
+            String buildId = crowdinDAO.buildTranslations();
+            InputStream responseBodyAsStream = crowdinDAO.downloadTranslations(buildId);
+            ZipInputStream zis = new ZipInputStream(responseBodyAsStream);
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                if (!entry.isDirectory()) {
 
-            if (returnCode == 200) {
-
-                Map<TranslationFile, byte[]> translations = new HashMap<>();
-
-                InputStream responseBodyAsStream = response.getEntity().getContent();
-                ZipInputStream zis = new ZipInputStream(responseBodyAsStream);
-                ZipEntry entry;
-                while ((entry = zis.getNextEntry()) != null) {
-                    if (!entry.isDirectory()) {
-
-                        String name = entry.getName();
-                        getLog().debug("Processing " + name);
-                        int slash = name.indexOf('/');
-                        String language = name.substring(0, slash);
+                    String name = entry.getName();
+                    getLog().debug("Processing " + name);
+                    int slash = name.indexOf('/');
+                    String language = name.substring(0, slash);
+                    name = name.substring(slash + 1);
+                    slash = name.indexOf('/');
+                    if (slash > 0) {
+                        String mavenId = name.substring(0, slash);
                         name = name.substring(slash + 1);
-                        slash = name.indexOf('/');
-                        if (slash > 0) {
-                            String mavenId = name.substring(0, slash);
-                            name = name.substring(slash + 1);
-                            TranslationFile translationFile = new TranslationFile(language, mavenId, name);
+                        TranslationFile translationFile = new TranslationFile(language, mavenId, name);
 
-                            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                            while (zis.available() > 0) {
-                                int read = zis.read();
-                                if (read != -1) {
-                                    bos.write(read);
-                                }
+                        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                        while (zis.available() > 0) {
+                            int read = zis.read();
+                            if (read != -1) {
+                                bos.write(read);
                             }
-                            bos.close();
-                            translations.put(translationFile, bos.toByteArray());
                         }
+                        bos.close();
+                        translations.put(translationFile, bos.toByteArray());
                     }
                 }
-
-                return translations;
-            } else {
-                throw new MojoExecutionException("Failed to get translations from crowdin");
             }
+            return translations;
         } catch (Exception e) {
             throw new MojoExecutionException("Failed to call API", e);
         }
@@ -167,10 +152,13 @@ public class PullCrowdinMojo extends AbstractCrowdinMojo {
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         super.execute();
+        crowdinDAO = new CrowdinTranslationDAOImpl(CrowdinApiUtils.getServerUrl(),
+                authenticationInfo.getUserName(),
+                authenticationInfo.getPassword());
 
         if (messagesInputDirectory.exists()) {
             getLog().info("Downloading translations from crowdin.");
-            Map<TranslationFile, byte[]> translations = downloadTranslations();
+            Map<TranslationFile, byte[]> translations = pullTranslations();
 
             Set<Artifact> dependencyArtifacts = getAllDependencies();
             Set<String> mavenIds = new HashSet<>();
@@ -191,7 +179,7 @@ public class PullCrowdinMojo extends AbstractCrowdinMojo {
             }
 
             translations = usedTranslations;
-            if (translations.size() == 0) {
+            if (translations.isEmpty()) {
                 getLog().info("No translations available for this project!");
             } else {
 
@@ -247,11 +235,10 @@ public class PullCrowdinMojo extends AbstractCrowdinMojo {
     private Set<Artifact> getAllDependencies() throws MojoExecutionException {
         Set<Artifact> result = new HashSet<>();
         try {
-            ArtifactFilter artifactFilter = new ScopeArtifactFilter(DefaultArtifact.SCOPE_COMPILE);
+            ArtifactFilter artifactFilter = new ScopeArtifactFilter(Artifact.SCOPE_COMPILE);
 
-            ProjectBuildingRequest buildingRequest =
-                    new DefaultProjectBuildingRequest(session.getProjectBuildingRequest());
-
+            ProjectBuildingRequest buildingRequest = new DefaultProjectBuildingRequest(session.getProjectBuildingRequest());
+            buildingRequest.setProject(project);
             DependencyNode rootNode = dependencyGraphBuilder.buildDependencyGraph(buildingRequest, artifactFilter);
 
             CollectingDependencyNodeVisitor visitor = new CollectingDependencyNodeVisitor();
@@ -267,5 +254,4 @@ public class PullCrowdinMojo extends AbstractCrowdinMojo {
         }
         return result;
     }
-
 }
