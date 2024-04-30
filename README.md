@@ -1,5 +1,9 @@
 # crowdin-maven
 
+This project is forked from [glandais/crowdin-maven](https://github.com/glandais/crowdin-maven).
+
+It has been rewritten to use the version 2 of the crowdin API. (The API V1 is deprecated).
+
 This plugin allows Maven projects to be translated using crowdin.
 
 # Quick start
@@ -14,19 +18,16 @@ Add a server to your ~/.m2/settings.xml (keeping your API key private)
  <servers>
   <!-- ... -->
   <server>
-   <id>crowdin-myproject</id>
-   <username>myproject<username>
-   <password>API key</password>
+   <id>crowdin-server</id>
+   <username>TheIdOfTheCrowdinProject<username>
+   <password>YourPersonalApiToken/password>
   <server>
-  <!-- ... -->
  </servers>
 <!-- ... -->
  <pluginGroups>
   <!-- ... -->
   <pluginGroup>com.googlecode.crowdin-maven</pluginGroup>
-  <!-- ... -->
  </pluginGroups>
-<!-- ... -->
 </settings>
 ```
 
@@ -51,7 +52,7 @@ Configure your build for crowdin usage in your project's pom.xml :
       </execution>
      </executions>
      <configuration>
-      <crowdinServerId>crowdin-myproject</crowdinServerId>
+      <crowdinServerId>crowdin-server</crowdinServerId>
      </configuration>
    </plugin>
    <!-- ... -->
@@ -66,14 +67,14 @@ Configure your build for crowdin usage in your project's pom.xml :
 
 Put your messages files in properties format in src/main/messages.
 
-*Goal* | *Description*
---- | ---
-`mvn crowdin:push` | Push the messages files on crowdin.<br>It is a Maven first, files or keys not in Maven will be erased on crowdin.
+| *Goal*             | *Description*                                                                                                      |
+|--------------------|--------------------------------------------------------------------------------------------------------------------|
+| `mvn crowdin:push` | Push the messages files on crowdin.<br> It is a Maven first, files or keys not in Maven will be erased on crowdin. |
 
 ## Getting translations from crowdin
 
-*Goal* | *Description*
---- | ---
-`mvn crowdin:export` | Ask crowdin to update the translations on their side.<br>There is a limit of 30 minutes between two exports.
-`mvn crowdin:pull` | Retrieve messages from crowdin in `src/main/crowdin`.<br>`src/main/crowdin` must be considered as a derived resource. Do not edit those files.
-`mvn crowdin:aggregate` | This goal should be executed when the project is built.<br>It aggregates the properties from `src/main/crowdin` in regular Java properties files.<br>Those files are attached to the build, included in the packaging next to the classes.<br>Using the configuration above in project's pom.xml, this goal is executed on Maven `generate-resources`.
+Retrieve the translations from crowdin and put them in src/main/crowdin.
+
+| *Goal*                  | *Description*                                                                                                                                                                                                                                                                                                                                          |
+|-------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `mvn crowdin:pull`      | Retrieve messages from crowdin in `src/main/crowdin`.<br>`src/main/crowdin` must be considered as a derived resource. Do not edit those files.                                                                                                                                                                                                         |

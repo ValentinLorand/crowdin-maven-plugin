@@ -2,18 +2,20 @@ package com.googlecode.crowdin.maven.dao;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import org.apache.commons.io.IOUtils;
-import org.junit.Before;
 import org.junit.Rule;
 import org.junit.jupiter.api.*;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.logging.Logger;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 
 class CrowdinTranslationDAOTest {
+
+    Logger logger = Logger.getLogger(CrowdinTranslationDAOTest.class.getName());
 
     private static CrowdinTranslationDAO crowdinDAO;
 
@@ -22,7 +24,7 @@ class CrowdinTranslationDAOTest {
 
     @BeforeEach
     public void setUp() {
-        crowdinDAO = new CrowdinTranslationDAOImpl("http://localhost:7777","111", "secretApiKey");
+        crowdinDAO = new CrowdinPullTranslationDAOImpl(logger, "http://localhost:7777","111", "secretApiKey");
         wireMockRule.start();
     }
 

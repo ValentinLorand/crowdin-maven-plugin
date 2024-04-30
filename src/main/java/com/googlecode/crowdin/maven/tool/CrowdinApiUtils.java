@@ -24,14 +24,24 @@ public class CrowdinApiUtils {
         httpRequestBase.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey);
     }
 
-    public static InputStream executeQuery(CloseableHttpClient httpClient, String apiKey, HttpRequestBase httpRequestBase, Logger log) {
+    public static HttpResponse executeQueryWithResponse(CloseableHttpClient httpClient, String apiKey, HttpRequestBase httpRequestBase, Logger log) {
+        if (apiKey != null)
+            addAuthorizationHeader(httpRequestBase, apiKey);
         try {
-            addAuthorizationHeader(httpRequestBase,apiKey);
-            log.fine("Calling " + httpRequestBase.getURI().getQuery());
+            log.fine("Calling " + httpRequestBase.getURI().getHost());
             HttpResponse response = httpClient.execute(httpRequestBase);
             log.fine("Status code : " + response.getStatusLine().getStatusCode());
             checkStatusCode(response);
-            return response.getEntity() == null ? null : response.getEntity().getContent();
+            return response;
+        } catch (Exception e) {
+            throw new CrowdinDAOException("Failed to call API", e);
+        }
+    }
+
+    public static InputStream executeQuery(CloseableHttpClient httpClient, String apiKey, HttpRequestBase httpRequestBase, Logger log) {
+        HttpResponse response = executeQueryWithResponse(httpClient, apiKey, httpRequestBase, log);
+        try {
+            return response.getEntity() != null ? response.getEntity().getContent() : null;
         } catch (Exception e) {
             throw new CrowdinDAOException("Failed to call API", e);
         }

@@ -1,6 +1,7 @@
 package com.googlecode.crowdin.maven.mojo;
 
 import com.googlecode.crowdin.maven.tool.SortedProperties;
+import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Resource;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -25,8 +26,11 @@ public class AggregateCrowdinMojo extends AbstractMojo {
     /**
      * The current Maven project
      */
-    @Parameter(readonly = true, required = true)
+    @Parameter(defaultValue = "${project}", readonly = true, required = true)
     protected MavenProject project;
+
+    @Parameter(defaultValue = "${session}", readonly = true, required = true)
+    private MavenSession session;
 
     /**
      * The directory where the generated resource files will be stored. The

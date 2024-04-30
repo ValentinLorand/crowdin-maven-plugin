@@ -2,19 +2,22 @@ package com.googlecode.crowdin.maven.dao;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.googlecode.crowdin.maven.tool.CrowdinApiUtils;
+import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 
 import java.io.InputStream;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import static com.googlecode.crowdin.maven.tool.CrowdinApiUtils.executeQuery;
 
-public class CrowdinTranslationDAOImpl implements CrowdinTranslationDAO {
+public class CrowdinPullTranslationDAOImpl implements CrowdinTranslationDAO {
 
-    private final Logger log = Logger.getLogger(CrowdinTranslationDAOImpl.class.getName());
+    private final Logger log;
 
     private final ObjectMapper mapper = new ObjectMapper();
     private final String projectId;
@@ -22,22 +25,23 @@ public class CrowdinTranslationDAOImpl implements CrowdinTranslationDAO {
     private final String serverUrl;
     protected CloseableHttpClient client;
 
-    public CrowdinTranslationDAOImpl(String serverUrl, String projectId, String apiKey) {
+    public CrowdinPullTranslationDAOImpl(Logger logger, String serverUrl, String projectId, String apiKey) {
         this.projectId = projectId;
         this.apiKey = apiKey;
         this.serverUrl = serverUrl;
+        this.log = logger;
         this.client = HttpClientBuilder.create().useSystemProperties().build();
     }
 
     @Override
     public String buildTranslations() {
         String uri = serverUrl + "/projects/" + projectId + "/translations/builds";
-        HttpGet getMethod = new HttpGet(uri);
-        InputStream responseBodyAsStream = executeQuery(client, apiKey, getMethod, log);
+        HttpPost postMethod = new HttpPost(uri);
+        InputStream responseBodyAsStream = CrowdinApiUtils.executeQuery(client, apiKey, postMethod, log);
 
         try {
             JsonNode node = mapper.readTree(responseBodyAsStream);
-            return node.get("data").get(0).get("data").get("id").asText();
+            return node.get("data").get("id").asText();
         }catch (Exception e) {
             throw new CrowdinDAOException("Failed to build translations", e);
         }
@@ -48,15 +52,28 @@ public class CrowdinTranslationDAOImpl implements CrowdinTranslationDAO {
     public InputStream downloadTranslations(String buildId) {
         String uri = serverUrl + "/projects/" + projectId + "/translations/builds/" +buildId+ "/download";
         HttpGet getMethod = new HttpGet(uri);
-        InputStream responseBodyAsStream = executeQuery(client, apiKey, getMethod, log);
+        HttpResponse response = CrowdinApiUtils.executeQueryWithResponse(client, apiKey, getMethod, log);
 
+        int statusCode = response.getStatusLine().getStatusCode();
         try {
-            JsonNode node = mapper.readTree(responseBodyAsStream);
-            String downloadUrl = node.get("data").get("url").asText();
+            InputStream responseBodyAsStream = response.getEntity().getContent();
+            if (statusCode == 200) {
+                JsonNode node = mapper.readTree(responseBodyAsStream);
+                String downloadUrl = node.get("data").get("url").asText();
 
-            HttpGet downloadRequest = new HttpGet(downloadUrl);
-            return executeQuery(client, apiKey, downloadRequest, log);
-        } catch (Exception e) {
+                HttpGet downloadRequest = new HttpGet(downloadUrl);
+                return executeQuery(client,null, downloadRequest, log);
+
+            } else if (statusCode == 202) {
+                TimeUnit.SECONDS.sleep(2);
+                JsonNode node = mapper.readTree(responseBodyAsStream);
+                String percent = node.get("data").get("progress").asText();
+                log.info("Waiting for build to be ready... (" + percent + "%)");
+                return downloadTranslations(buildId);
+            } else {
+                throw new CrowdinDAOException("Failed to download translations. Status code: " + statusCode);
+            }
+        }catch (Exception e) {
             throw new CrowdinDAOException("Failed to download translations", e);
         }
     }
@@ -65,14 +82,14 @@ public class CrowdinTranslationDAOImpl implements CrowdinTranslationDAO {
     public InputStream exportTranslations() {
         String uri = serverUrl + "/projects/" + projectId + "/translations/exports";
         HttpPost postRequest = new HttpPost(uri);
-        InputStream responseBodyAsStream = executeQuery(client, apiKey, postRequest, log);
+        InputStream responseBodyAsStream = CrowdinApiUtils.executeQuery(client, apiKey, postRequest, log);
 
         try {
             JsonNode node = mapper.readTree(responseBodyAsStream);
             String downloadUrl = node.get("data").get("url").asText();
 
             HttpGet downloadRequest = new HttpGet(downloadUrl);
-            return executeQuery(client, apiKey, downloadRequest, log);
+            return CrowdinApiUtils.executeQuery(client, apiKey, downloadRequest, log);
         } catch (Exception e) {
             throw new CrowdinDAOException("Failed to download translations", e);
         }

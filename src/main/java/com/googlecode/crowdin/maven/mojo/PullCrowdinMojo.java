@@ -1,9 +1,9 @@
 package com.googlecode.crowdin.maven.mojo;
 
-import com.googlecode.crowdin.maven.dao.CrowdinFileDAO;
-import com.googlecode.crowdin.maven.dao.CrowdinFileDAOImpl;
+import com.googlecode.crowdin.maven.service.GitService;
 import com.googlecode.crowdin.maven.dao.CrowdinTranslationDAO;
-import com.googlecode.crowdin.maven.dao.CrowdinTranslationDAOImpl;
+import com.googlecode.crowdin.maven.dao.CrowdinPullTranslationDAOImpl;
+import com.googlecode.crowdin.maven.dao.GazelleLogger;
 import com.googlecode.crowdin.maven.tool.CrowdinApiUtils;
 import com.googlecode.crowdin.maven.tool.SortedProperties;
 import com.googlecode.crowdin.maven.tool.SpecialArtifact;
@@ -28,6 +28,7 @@ import org.apache.maven.shared.dependency.graph.traversal.CollectingDependencyNo
 import java.io.*;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -152,12 +153,14 @@ public class PullCrowdinMojo extends AbstractCrowdinMojo {
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         super.execute();
-        crowdinDAO = new CrowdinTranslationDAOImpl(CrowdinApiUtils.getServerUrl(),
+        Logger gazelleLogger = new GazelleLogger(getLog());
+        GitService gitService = new GitService();
+        crowdinDAO = new CrowdinPullTranslationDAOImpl(gazelleLogger,CrowdinApiUtils.getServerUrl(),
                 authenticationInfo.getUserName(),
                 authenticationInfo.getPassword());
 
         if (messagesInputDirectory.exists()) {
-            getLog().info("Downloading translations from crowdin.");
+            gazelleLogger.info("Downloading translations from crowdin on branch : " + gitService.getCurrentGitBranch());
             Map<TranslationFile, byte[]> translations = pullTranslations();
 
             Set<Artifact> dependencyArtifacts = getAllDependencies();
