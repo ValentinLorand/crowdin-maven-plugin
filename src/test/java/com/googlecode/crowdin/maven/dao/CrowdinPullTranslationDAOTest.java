@@ -1,6 +1,8 @@
 package com.googlecode.crowdin.maven.dao;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.googlecode.crowdin.maven.dao.pull.CrowdinPullTranslationDAOImpl;
+import com.googlecode.crowdin.maven.dao.pull.CrowdinPullTranslationDAO;
 import org.apache.commons.io.IOUtils;
 import org.junit.Rule;
 import org.junit.jupiter.api.*;
@@ -13,11 +15,11 @@ import java.util.logging.Logger;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 
-class CrowdinTranslationDAOTest {
+class CrowdinPullTranslationDAOTest {
 
-    Logger logger = Logger.getLogger(CrowdinTranslationDAOTest.class.getName());
+    Logger logger = Logger.getLogger(CrowdinPullTranslationDAOTest.class.getName());
 
-    private static CrowdinTranslationDAO crowdinDAO;
+    private static CrowdinPullTranslationDAO crowdinDAO;
 
     @Rule
     public WireMockRule wireMockRule = new WireMockRule(options().port(7777));
@@ -35,10 +37,10 @@ class CrowdinTranslationDAOTest {
 
     @Test
     void testBuildTranslations() {
-        wireMockRule.stubFor(get("/projects/111/translations/builds")
+        wireMockRule.stubFor(post("/projects/111/translations/builds")
                 .withHeader("Authorization", equalTo("Bearer secretApiKey"))
                 .willReturn(ok()
-                        .withBody("{\"data\":[{\"data\":{\"id\":\"2\"}}]}"))
+                        .withBody("{\"data\":{\"id\":\"2\"}}"))
         );
         String folderId = crowdinDAO.buildTranslations();
         Assertions.assertFalse(folderId.isEmpty());
@@ -54,7 +56,6 @@ class CrowdinTranslationDAOTest {
                         .withBody("{\"data\":{\"url\": \"http://localhost:7777/downloadLink\"}}"))
         );
         wireMockRule.stubFor(get("/downloadLink")
-                .withHeader("Authorization", equalTo("Bearer secretApiKey"))
                 .willReturn(ok()
                         .withBody("traductionKey=traductionValue"))
         );

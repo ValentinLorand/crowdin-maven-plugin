@@ -14,18 +14,16 @@ Add a server to your ~/.m2/settings.xml (keeping your API key private)
 
 ```xml
 <settings>
-<!-- ... -->
+    
  <servers>
-  <!-- ... -->
   <server>
    <id>crowdin-server</id>
-   <username>TheIdOfTheCrowdinProject<username>
-   <password>YourPersonalApiToken/password>
+   <username>TheIdOfTheCrowdinProject</username>
+   <password>YourPersonalApiToken/password></password>
   <server>
  </servers>
-<!-- ... -->
+
  <pluginGroups>
-  <!-- ... -->
   <pluginGroup>com.googlecode.crowdin-maven</pluginGroup>
  </pluginGroups>
 </settings>
@@ -43,7 +41,7 @@ Configure your build for crowdin usage in your project's pom.xml :
    <plugin>
     <groupId>com.googlecode.crowdin-maven</groupId>
     <artifactId>crowdin-plugin</artifactId>
-    <version>LATEST</version>   
+    <version>${crowdin-plugin.version}</version>   
      <executions>
       <execution>
        <goals>
@@ -78,3 +76,7 @@ Retrieve the translations from crowdin and put them in src/main/crowdin.
 | *Goal*                  | *Description*                                                                                                                                                                                                                                                                                                                                          |
 |-------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `mvn crowdin:pull`      | Retrieve messages from crowdin in `src/main/crowdin`.<br>`src/main/crowdin` must be considered as a derived resource. Do not edit those files.                                                                                                                                                                                                         |
+
+## TO IMPLEMENT
+
+- Branches management

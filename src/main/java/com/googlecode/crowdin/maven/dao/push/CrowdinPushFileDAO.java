@@ -1,8 +1,8 @@
-package com.googlecode.crowdin.maven.dao;
+package com.googlecode.crowdin.maven.dao.push;
 
 import java.util.Map;
 
-public interface CrowdinFileDAO {
+public interface CrowdinPushFileDAO {
 
     /**
      * Get the folder id by its name

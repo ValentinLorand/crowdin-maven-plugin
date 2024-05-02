@@ -1,7 +1,10 @@
 package com.googlecode.crowdin.maven.dao;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.googlecode.crowdin.maven.dao.push.CrowdinPushFileDAO;
+import com.googlecode.crowdin.maven.dao.push.CrowdinPushFileDAOImpl;
 import org.junit.Rule;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -9,17 +12,22 @@ import org.junit.jupiter.api.Test;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 
-class CrowdinFileDAOTest {
+class CrowdinPushFileDAOTest {
 
-    private static CrowdinFileDAO crowdinDAO;
+    private static CrowdinPushFileDAO crowdinDAO;
 
     @Rule
     public WireMockRule wireMockRule = new WireMockRule(options().port(7777));
 
     @BeforeEach
     public void setUp() {
-        crowdinDAO = new CrowdinFileDAOImpl("http://localhost:7777","111", "secretApiKey");
+        crowdinDAO = new CrowdinPushFileDAOImpl("http://localhost:7777","111", "secretApiKey");
         wireMockRule.start();
+    }
+
+    @AfterEach
+    public void tearDown() {
+        wireMockRule.stop();
     }
 
     @Test
@@ -51,13 +59,12 @@ class CrowdinFileDAOTest {
     void testCreateFileInDirectory() {
         wireMockRule.stubFor(post("/storages")
                 .withHeader("Authorization", equalTo("Bearer secretApiKey"))
-                .withHeader("Content-Type", equalTo("text/plain"))
                         .withRequestBody(equalTo("content"))
                 .willReturn(created().withBody("{\"data\":{\"id\":\"newStorageId\"}}"))
         );
         wireMockRule.stubFor(post("/projects/111/files")
                 .withHeader("Authorization", equalTo("Bearer secretApiKey"))
-                .withRequestBody(equalTo("{\"storageId\":\"newStorageId\",\"name\":\"fileName\",\"directoryId\":\"1\"}"))
+                .withRequestBody(equalTo("{\"storageId\":newStorageId,\"name\":\"fileName\",\"directoryId\":1}"))
                 .willReturn(created())
         );
 

@@ -1,7 +1,7 @@
 package com.googlecode.crowdin.maven.mojo;
 
-import com.googlecode.crowdin.maven.dao.CrowdinFileDAO;
-import com.googlecode.crowdin.maven.dao.CrowdinFileDAOImpl;
+import com.googlecode.crowdin.maven.dao.push.CrowdinPushFileDAO;
+import com.googlecode.crowdin.maven.dao.push.CrowdinPushFileDAOImpl;
 import com.googlecode.crowdin.maven.tool.CrowdinApiUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -21,7 +21,7 @@ import java.util.Set;
 @Mojo(name = "push", threadSafe = true)
 public class PushCrowdinMojo extends AbstractCrowdinMojo {
 
-    private CrowdinFileDAO crowdinDAO;
+    private CrowdinPushFileDAO crowdinDAO;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -43,7 +43,7 @@ public class PushCrowdinMojo extends AbstractCrowdinMojo {
             for (Entry<String, File> entry : entrySet) {
                 getLog().debug("File : " + entry.getKey());
                 getLog().debug("existingFiles : " + existingFiles.keySet());
-                if (existingFiles.keySet().contains(entry.getKey())) {
+                if (existingFiles.containsKey(entry.getKey())) {
                     getLog().info("Update file on crowdin : " + entry.getValue().getName());
                     String read = readFileContent(entry.getValue());
 
@@ -75,9 +75,9 @@ public class PushCrowdinMojo extends AbstractCrowdinMojo {
         }
     }
 
-    private CrowdinFileDAO getCrowdinFileDAO() {
+    private CrowdinPushFileDAO getCrowdinFileDAO() {
         if (crowdinDAO == null)
-            this.crowdinDAO = new CrowdinFileDAOImpl(CrowdinApiUtils.getServerUrl(),
+            this.crowdinDAO = new CrowdinPushFileDAOImpl(CrowdinApiUtils.getServerUrl(),
                 authenticationInfo.getUserName(),
                 authenticationInfo.getPassword());
         return crowdinDAO;

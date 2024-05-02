@@ -14,14 +14,19 @@ public class CrowdinApiUtils {
     private CrowdinApiUtils() {
     }
 
-    static final String CROWDIN_SERVER_URL = "https://crowdin.com/api/v2";
+    private static final String CROWDIN_SERVER_URL = "https://crowdin.com/api/v2";
 
     public static String getServerUrl() {
         return CROWDIN_SERVER_URL;
     }
 
-    public static void addAuthorizationHeader(HttpRequestBase httpRequestBase, String apiKey) {
-        httpRequestBase.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey);
+    public static InputStream executeQuery(CloseableHttpClient httpClient, String apiKey, HttpRequestBase httpRequestBase, Logger log) {
+        HttpResponse response = executeQueryWithResponse(httpClient, apiKey, httpRequestBase, log);
+        try {
+            return response.getEntity() != null ? response.getEntity().getContent() : null;
+        } catch (Exception e) {
+            throw new CrowdinDAOException("Failed to call API", e);
+        }
     }
 
     public static HttpResponse executeQueryWithResponse(CloseableHttpClient httpClient, String apiKey, HttpRequestBase httpRequestBase, Logger log) {
@@ -38,15 +43,19 @@ public class CrowdinApiUtils {
         }
     }
 
-    public static InputStream executeQuery(CloseableHttpClient httpClient, String apiKey, HttpRequestBase httpRequestBase, Logger log) {
-        HttpResponse response = executeQueryWithResponse(httpClient, apiKey, httpRequestBase, log);
-        try {
-            return response.getEntity() != null ? response.getEntity().getContent() : null;
-        } catch (Exception e) {
-            throw new CrowdinDAOException("Failed to call API", e);
-        }
+    /**
+     * Add the Authorization header to the request
+     * @param httpRequestBase the request
+     * @param apiKey the API key
+     */
+    private static void addAuthorizationHeader(HttpRequestBase httpRequestBase, String apiKey) {
+        httpRequestBase.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey);
     }
 
+    /**
+     * Check the status code of the response, throw an exception if code is 4xx or 5xx
+     * @param response the response
+     */
     private static void checkStatusCode(HttpResponse response) {
         int returnCode = response.getStatusLine().getStatusCode();
         if (returnCode >= 400) {

@@ -1,7 +1,8 @@
-package com.googlecode.crowdin.maven.dao;
+package com.googlecode.crowdin.maven.dao.pull;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.googlecode.crowdin.maven.dao.CrowdinDAOException;
 import com.googlecode.crowdin.maven.tool.CrowdinApiUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -15,7 +16,7 @@ import java.util.logging.Logger;
 
 import static com.googlecode.crowdin.maven.tool.CrowdinApiUtils.executeQuery;
 
-public class CrowdinPullTranslationDAOImpl implements CrowdinTranslationDAO {
+public class CrowdinPullTranslationDAOImpl implements CrowdinPullTranslationDAO {
 
     private final Logger log;
 

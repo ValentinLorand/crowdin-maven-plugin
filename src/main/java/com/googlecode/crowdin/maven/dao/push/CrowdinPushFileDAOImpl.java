@@ -1,8 +1,9 @@
-package com.googlecode.crowdin.maven.dao;
+package com.googlecode.crowdin.maven.dao.push;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.googlecode.crowdin.maven.dao.CrowdinDAOException;
 import com.googlecode.crowdin.maven.tool.CrowdinApiUtils;
 import org.apache.http.HttpHeaders;
 import org.apache.http.client.methods.HttpDelete;
@@ -20,9 +21,9 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.logging.Logger;
 
-public class CrowdinFileDAOImpl implements CrowdinFileDAO {
+public class CrowdinPushFileDAOImpl implements CrowdinPushFileDAO {
 
-    private final Logger log = Logger.getLogger(CrowdinFileDAOImpl.class.getName());
+    private final Logger log = Logger.getLogger(CrowdinPushFileDAOImpl.class.getName());
 
     private final ObjectMapper mapper = new ObjectMapper();
     private final String projectId;
@@ -30,7 +31,7 @@ public class CrowdinFileDAOImpl implements CrowdinFileDAO {
     private final String serverUrl;
     protected CloseableHttpClient client;
 
-    public CrowdinFileDAOImpl(String serverUrl, String projectId, String apiKey) {
+    public CrowdinPushFileDAOImpl(String serverUrl, String projectId, String apiKey) {
         this.projectId = projectId;
         this.apiKey = apiKey;
         this.serverUrl = serverUrl;
