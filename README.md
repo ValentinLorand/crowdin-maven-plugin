@@ -10,73 +10,57 @@ This plugin allows Maven projects to be translated using crowdin.
 
 ## Configuration
 
-Add a server to your ~/.m2/settings.xml (keeping your API key private)
+Add a server in your `~/.m2/settings.xml` (keeping your API key private).
+
+You can generate your personal API key in your crowdin settings.
 
 ```xml
 <settings>
-    
- <servers>
-  <server>
-   <id>crowdin-server</id>
-   <username>TheIdOfTheCrowdinProject</username>
-   <password>YourPersonalApiToken/password></password>
-  <server>
- </servers>
-
- <pluginGroups>
-  <pluginGroup>com.googlecode.crowdin-maven</pluginGroup>
- </pluginGroups>
+    <servers>
+        <server>
+            <id>crowdin-server</id>
+            <username>TheIdOfTheCrowdinProject</username>
+            <password>YourPersonalApiToken/password></password>
+        </server>
+    </servers>
 </settings>
 ```
 
 Configure your build for crowdin usage in your project's pom.xml :
 
 ```xml
-<project>
-<!-- ... -->
- <build>
- <!-- ... -->
-  <plugins>
-   <!-- ... -->
-   <plugin>
-    <groupId>com.googlecode.crowdin-maven</groupId>
-    <artifactId>crowdin-plugin</artifactId>
-    <version>${crowdin-plugin.version}</version>   
-     <executions>
-      <execution>
-       <goals>
-        <goal>aggregate</goal>
-       </goals>
-      </execution>
-     </executions>
-     <configuration>
-      <crowdinServerId>crowdin-server</crowdinServerId>
-     </configuration>
-   </plugin>
-   <!-- ... -->
-  </plugin>
-  <!-- ... -->
- </build>
- <!-- ... -->
-</project>
+<pluginManagement>
+    <plugin>
+        <groupId>com.googlecode.crowdin-maven</groupId>
+        <artifactId>crowdin-plugin</artifactId>
+        <version>${crowdin-plugin.version}</version>
+        <configuration>
+            <crowdinServerId>crowdin-server</crowdinServerId>
+        </configuration>
+    </plugin>
+</pluginManagement>
 ```
 
 ## Pushing translations to crowdin
 
-Put your messages files in properties format in src/main/messages.
+Put your messages files in properties format in `src/main/messages`.
 
-| *Goal*             | *Description*                                                                                                      |
-|--------------------|--------------------------------------------------------------------------------------------------------------------|
-| `mvn crowdin:push` | Push the messages files on crowdin.<br> It is a Maven first, files or keys not in Maven will be erased on crowdin. |
+> [WARNING] The plugin will update all the existing files on Crowdin, create new ones and delete the ones that are not in the folder.
 
-## Getting translations from crowdin
+| *Goal*             | *Description*                               |
+|--------------------|---------------------------------------------|
+| `mvn crowdin:push` | Push the messages files on Crowdin server . |
 
-Retrieve the translations from crowdin and put them in src/main/crowdin.
+## Pull translations from crowdin
 
-| *Goal*                  | *Description*                                                                                                                                                                                                                                                                                                                                          |
-|-------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `mvn crowdin:pull`      | Retrieve messages from crowdin in `src/main/crowdin`.<br>`src/main/crowdin` must be considered as a derived resource. Do not edit those files.                                                                                                                                                                                                         |
+Retrieve the translations from crowdin and put them in `src/main/crowdin`.
 
-## TO IMPLEMENT
+> [WARNING] The files in the crowdin folder should not be modified manually.
+
+| *Goal*                  | *Description*                          |
+|-------------------------|----------------------------------------|
+| `mvn crowdin:pull`      | Retrieve messages from crowdin server. |
+
+## To be implemented
 
 - Branches management
