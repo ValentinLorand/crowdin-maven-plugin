@@ -1,6 +1,5 @@
-package com.googlecode.crowdin.maven.tool;
+package com.googlecode.crowdin.maven.dao;
 
-import com.googlecode.crowdin.maven.dao.CrowdinDAOException;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpRequestBase;

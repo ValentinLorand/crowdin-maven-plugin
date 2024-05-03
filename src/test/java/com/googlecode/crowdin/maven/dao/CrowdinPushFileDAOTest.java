@@ -1,8 +1,8 @@
 package com.googlecode.crowdin.maven.dao;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
-import com.googlecode.crowdin.maven.dao.push.CrowdinPushFileDAO;
-import com.googlecode.crowdin.maven.dao.push.CrowdinPushFileDAOImpl;
+import com.googlecode.crowdin.maven.dao.push.PushSourceFileDAO;
+import com.googlecode.crowdin.maven.dao.push.PushSourceFileDAOCrowdin;
 import org.junit.Rule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -14,14 +14,14 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options
 
 class CrowdinPushFileDAOTest {
 
-    private static CrowdinPushFileDAO crowdinDAO;
+    private static PushSourceFileDAO crowdinDAO;
 
     @Rule
     public WireMockRule wireMockRule = new WireMockRule(options().port(7777));
 
     @BeforeEach
     public void setUp() {
-        crowdinDAO = new CrowdinPushFileDAOImpl("http://localhost:7777","111", "secretApiKey");
+        crowdinDAO = new PushSourceFileDAOCrowdin("http://localhost:7777","111", "secretApiKey");
         wireMockRule.start();
     }
 

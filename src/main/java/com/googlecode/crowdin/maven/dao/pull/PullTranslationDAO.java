@@ -2,7 +2,7 @@ package com.googlecode.crowdin.maven.dao.pull;
 
 import java.io.InputStream;
 
-public interface CrowdinPullTranslationDAO {
+public interface PullTranslationDAO {
 
     /**
      * Build translations on crowdin

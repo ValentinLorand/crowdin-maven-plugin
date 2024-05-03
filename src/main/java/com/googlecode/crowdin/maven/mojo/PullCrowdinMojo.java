@@ -1,10 +1,10 @@
 package com.googlecode.crowdin.maven.mojo;
 
 import com.googlecode.crowdin.maven.service.GitService;
-import com.googlecode.crowdin.maven.dao.pull.CrowdinPullTranslationDAO;
-import com.googlecode.crowdin.maven.dao.pull.CrowdinPullTranslationDAOImpl;
+import com.googlecode.crowdin.maven.dao.pull.PullTranslationDAO;
+import com.googlecode.crowdin.maven.dao.pull.PullTranslationDAOCrowdin;
 import com.googlecode.crowdin.maven.dao.GazelleLogger;
-import com.googlecode.crowdin.maven.tool.CrowdinApiUtils;
+import com.googlecode.crowdin.maven.dao.CrowdinApiUtils;
 import com.googlecode.crowdin.maven.tool.SortedProperties;
 import com.googlecode.crowdin.maven.tool.SpecialArtifact;
 import com.googlecode.crowdin.maven.tool.TranslationFile;
@@ -47,8 +47,61 @@ public class PullCrowdinMojo extends AbstractCrowdinMojo {
     @Component(hint = "default")
     private DependencyGraphBuilder dependencyGraphBuilder;
 
-    CrowdinPullTranslationDAO crowdinDAO;
+    private PullTranslationDAO crowdinDAO;
 
+    private final Logger log = new GazelleLogger(getLog());
+    private final GitService gitService = new GitService();
+
+    @Override
+    public void execute() throws MojoExecutionException, MojoFailureException {
+        super.execute();
+        PullTranslationDAO crowdinDAO = getCrowdinPullDAO();
+
+        if (messagesInputDirectory.exists()) {
+            log.info("Downloading translations from crowdin (branch : " + gitService.getCurrentGitBranch() + ")");
+            Map<TranslationFile, byte[]> translations = pullTranslations(crowdinDAO);
+
+            Set<Artifact> dependencyArtifacts = getAllDependencies();
+            Set<String> mavenIds = new HashSet<>();
+            for (Artifact artifact : dependencyArtifacts) {
+                String mavenId = getMavenId(artifact);
+                mavenIds.add(mavenId);
+            }
+
+            Map<TranslationFile, byte[]> usedTranslations = new HashMap<>(translations);
+
+            for (TranslationFile translationFile : translations.keySet()) {
+                if (!mavenIds.contains(translationFile.getMavenId())) {
+                    getLog().debug(translationFile.getMavenId() + " is not a dependency");
+                    usedTranslations.remove(translationFile);
+                } else {
+                    getLog().debug(translationFile.getMavenId() + " is a dependency");
+                }
+            }
+
+            translations = usedTranslations;
+            if (translations.isEmpty()) {
+                getLog().info("No translations available for this project!");
+            } else {
+                getLog().info("Cleaning crowdin folder.");
+                cleanFolders(translations.keySet());
+
+                try {
+                    getLog().info("Copying translations to crowdin folder.");
+                    copyTranslations(translations);
+                } catch (IOException e) {
+                    throw new MojoExecutionException("Failed to write file", e);
+                }
+            }
+        } else {
+            getLog().info(messagesInputDirectory.getPath() + " not found - skipping pull");
+        }
+    }
+
+    /**
+     * Clean folders that are not in the list of translation files
+     * @param translationFiles list of translation files
+     */
     private void cleanFolders(Set<TranslationFile> translationFiles) {
         if (messagesOutputDirectory.exists()) {
             File[] languageFolders = messagesOutputDirectory.listFiles();
@@ -66,6 +119,11 @@ public class PullCrowdinMojo extends AbstractCrowdinMojo {
         }
     }
 
+    /**
+     * Clean mavenId folders that are not in the list of translation files
+     * @param languageFolder language folder
+     * @param translationFiles list of translation files
+     */
     private void cleanLanguageFolder(File languageFolder, Set<TranslationFile> translationFiles) {
         File[] mavenIds = languageFolder.listFiles();
         if (mavenIds != null) {
@@ -78,6 +136,12 @@ public class PullCrowdinMojo extends AbstractCrowdinMojo {
         }
     }
 
+    /**
+     * Check if a language is in the list of translation files
+     * @param translationFiles list of translation files
+     * @param language language to check
+     * @return true if the language is in the list of translation files
+     */
     private boolean containsLanguage(Set<TranslationFile> translationFiles, String language) {
         for (TranslationFile translationFile : translationFiles) {
             if (translationFile.getLanguage().equals(language)) {
@@ -87,6 +151,12 @@ public class PullCrowdinMojo extends AbstractCrowdinMojo {
         return false;
     }
 
+    /**
+     * Check if a mavenId is in the list of translation files
+     * @param translationFiles list of translation files
+     * @param mavenId mavenId to check
+     * @return true if the mavenId is in the list of translation files
+     */
     private boolean containsMavenId(Set<TranslationFile> translationFiles, String mavenId) {
         for (TranslationFile translationFile : translationFiles) {
             if (translationFile.getMavenId().equals(mavenId)) {
@@ -96,6 +166,11 @@ public class PullCrowdinMojo extends AbstractCrowdinMojo {
         return false;
     }
 
+    /**
+     * Delete a folder and its content
+     * @param folder folder to delete
+     * @param deleteRoot true if the root folder should be deleted
+     */
     private void deleteFolder(File folder, boolean deleteRoot) {
         File[] listFiles = folder.listFiles();
         if (listFiles != null) {
@@ -114,7 +189,12 @@ public class PullCrowdinMojo extends AbstractCrowdinMojo {
         }
     }
 
-    private Map<TranslationFile, byte[]> pullTranslations() throws MojoExecutionException {
+    /**
+     * Pull translations from crowdin
+     * @return map of translation files and their content
+     * @throws MojoExecutionException if the pull of translations fails
+     */
+    private Map<TranslationFile, byte[]> pullTranslations(PullTranslationDAO crowdinDAO) throws MojoExecutionException {
         try {
             Map<TranslationFile, byte[]> translations = new HashMap<>();
             String buildId = crowdinDAO.buildTranslations();
@@ -153,59 +233,11 @@ public class PullCrowdinMojo extends AbstractCrowdinMojo {
         }
     }
 
-    @Override
-    public void execute() throws MojoExecutionException, MojoFailureException {
-        super.execute();
-        Logger gazelleLogger = new GazelleLogger(getLog());
-        GitService gitService = new GitService();
-        crowdinDAO = new CrowdinPullTranslationDAOImpl(gazelleLogger,CrowdinApiUtils.getServerUrl(),
-                authenticationInfo.getUserName(),
-                authenticationInfo.getPassword());
-
-        if (messagesInputDirectory.exists()) {
-            gazelleLogger.info("Downloading translations from crowdin on branch : " + gitService.getCurrentGitBranch());
-            Map<TranslationFile, byte[]> translations = pullTranslations();
-
-            Set<Artifact> dependencyArtifacts = getAllDependencies();
-            Set<String> mavenIds = new HashSet<>();
-            for (Artifact artifact : dependencyArtifacts) {
-                String mavenId = getMavenId(artifact);
-                mavenIds.add(mavenId);
-            }
-
-            Map<TranslationFile, byte[]> usedTranslations = new HashMap<>(translations);
-
-            for (TranslationFile translationFile : translations.keySet()) {
-                if (!mavenIds.contains(translationFile.getMavenId())) {
-                    getLog().debug(translationFile.getMavenId() + " is not a dependency");
-                    usedTranslations.remove(translationFile);
-                } else {
-                    getLog().debug(translationFile.getMavenId() + " is a dependency");
-                }
-            }
-
-            translations = usedTranslations;
-            if (translations.isEmpty()) {
-                getLog().info("No translations available for this project!");
-            } else {
-
-                getLog().info("Cleaning crowdin folder.");
-                cleanFolders(translations.keySet());
-
-                getLog().info("Copying translations to crowdin folder.");
-                try {
-                    copyTranslations(translations);
-                } catch (IOException e) {
-                    throw new MojoExecutionException("Failed to write file", e);
-                }
-
-            }
-        } else {
-            getLog().info(messagesInputDirectory.getPath() + " not found - skipping pull");
-        }
-
-    }
-
+    /**
+     * Copy translations to the output directory
+     * @param translations map of translation files and their content
+     * @throws IOException if the write of the files fails
+     */
     private void copyTranslations(Map<TranslationFile, byte[]> translations) throws IOException {
         Set<Entry<TranslationFile, byte[]>> entrySet = translations.entrySet();
         for (Entry<TranslationFile, byte[]> entry : entrySet) {
@@ -238,6 +270,11 @@ public class PullCrowdinMojo extends AbstractCrowdinMojo {
         }
     }
 
+    /**
+     * Get all dependencies of the project
+     * @return set of dependencies
+     * @throws MojoExecutionException if the dependencies cannot be retrieved
+     */
     private Set<Artifact> getAllDependencies() throws MojoExecutionException {
         Set<Artifact> result = new HashSet<>();
         try {
@@ -259,5 +296,17 @@ public class PullCrowdinMojo extends AbstractCrowdinMojo {
             throw new MojoExecutionException("Failed to get dependencies", e);
         }
         return result;
+    }
+
+    /**
+     * Get the DAO to pull files in crowdin (Factory)
+     * @return the DAO to push files in crowdin
+     */
+    private PullTranslationDAO getCrowdinPullDAO() {
+        if (crowdinDAO == null)
+            crowdinDAO = new PullTranslationDAOCrowdin(log,CrowdinApiUtils.getServerUrl(),
+                    authenticationInfo.getUserName(),
+                    authenticationInfo.getPassword());
+        return crowdinDAO;
     }
 }

@@ -3,7 +3,7 @@ package com.googlecode.crowdin.maven.dao.pull;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.googlecode.crowdin.maven.dao.CrowdinDAOException;
-import com.googlecode.crowdin.maven.tool.CrowdinApiUtils;
+import com.googlecode.crowdin.maven.dao.CrowdinApiUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -14,9 +14,9 @@ import java.io.InputStream;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
-import static com.googlecode.crowdin.maven.tool.CrowdinApiUtils.executeQuery;
+import static com.googlecode.crowdin.maven.dao.CrowdinApiUtils.executeQuery;
 
-public class CrowdinPullTranslationDAOImpl implements CrowdinPullTranslationDAO {
+public class PullTranslationDAOCrowdin implements PullTranslationDAO {
 
     private final Logger log;
 
@@ -26,7 +26,7 @@ public class CrowdinPullTranslationDAOImpl implements CrowdinPullTranslationDAO 
     private final String serverUrl;
     protected CloseableHttpClient client;
 
-    public CrowdinPullTranslationDAOImpl(Logger logger, String serverUrl, String projectId, String apiKey) {
+    public PullTranslationDAOCrowdin(Logger logger, String serverUrl, String projectId, String apiKey) {
         this.projectId = projectId;
         this.apiKey = apiKey;
         this.serverUrl = serverUrl;

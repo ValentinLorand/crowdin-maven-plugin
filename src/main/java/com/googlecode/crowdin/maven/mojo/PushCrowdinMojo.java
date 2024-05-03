@@ -1,8 +1,8 @@
 package com.googlecode.crowdin.maven.mojo;
 
-import com.googlecode.crowdin.maven.dao.push.CrowdinPushFileDAO;
-import com.googlecode.crowdin.maven.dao.push.CrowdinPushFileDAOImpl;
-import com.googlecode.crowdin.maven.tool.CrowdinApiUtils;
+import com.googlecode.crowdin.maven.dao.push.PushSourceFileDAO;
+import com.googlecode.crowdin.maven.dao.push.PushSourceFileDAOCrowdin;
+import com.googlecode.crowdin.maven.dao.CrowdinApiUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -21,7 +21,7 @@ import java.util.Set;
 @Mojo(name = "push", threadSafe = true)
 public class PushCrowdinMojo extends AbstractCrowdinMojo {
 
-    private CrowdinPushFileDAO crowdinDAO;
+    private PushSourceFileDAO crowdinDAO;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -58,7 +58,8 @@ public class PushCrowdinMojo extends AbstractCrowdinMojo {
 
             for (String file : existingFiles.keySet()) {
                 if (!files.containsKey(file)) {
-                    getLog().info("Delete file on crowdin : " + file);
+                    String fileName = folderName + "/" + file;
+                    getLog().info("Delete file on crowdin : " + fileName);
                     crowdinDAO.deleteFile(existingFiles.get(file));
                 }
             }
@@ -67,22 +68,37 @@ public class PushCrowdinMojo extends AbstractCrowdinMojo {
         }
     }
 
-    private String readFileContent(File file) {
+    /**
+     * Read the content of a file
+     * @param file the file to read
+     * @return the content of the file
+     * @throws MojoExecutionException if the file can't be read
+     */
+    private String readFileContent(File file) throws MojoExecutionException{
         try {
             return new String(Files.readAllBytes(file.toPath()));
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new MojoExecutionException(e);
         }
     }
 
-    private CrowdinPushFileDAO getCrowdinFileDAO() {
+    /**
+     * Get the DAO to push files in crowdin (Factory)
+     * @return the DAO to push files in crowdin
+     */
+    private PushSourceFileDAO getCrowdinFileDAO() {
         if (crowdinDAO == null)
-            this.crowdinDAO = new CrowdinPushFileDAOImpl(CrowdinApiUtils.getServerUrl(),
+            this.crowdinDAO = new PushSourceFileDAOCrowdin(CrowdinApiUtils.getServerUrl(),
                 authenticationInfo.getUserName(),
                 authenticationInfo.getPassword());
         return crowdinDAO;
     }
 
+    /**
+     * Get the files to push in crowdin
+     * @param folderName the folder name in crowdin
+     * @return the files to push in crowdin
+     */
     private Map<String, File> getMessageFiles(String folderName) {
         Map<String, File> result = new HashMap<>();
         File[] listFiles = messagesInputDirectory.listFiles();

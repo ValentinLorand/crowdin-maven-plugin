@@ -1,8 +1,8 @@
 package com.googlecode.crowdin.maven.dao;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
-import com.googlecode.crowdin.maven.dao.pull.CrowdinPullTranslationDAOImpl;
-import com.googlecode.crowdin.maven.dao.pull.CrowdinPullTranslationDAO;
+import com.googlecode.crowdin.maven.dao.pull.PullTranslationDAOCrowdin;
+import com.googlecode.crowdin.maven.dao.pull.PullTranslationDAO;
 import org.apache.commons.io.IOUtils;
 import org.junit.Rule;
 import org.junit.jupiter.api.*;
@@ -19,14 +19,14 @@ class CrowdinPullTranslationDAOTest {
 
     Logger logger = Logger.getLogger(CrowdinPullTranslationDAOTest.class.getName());
 
-    private static CrowdinPullTranslationDAO crowdinDAO;
+    private static PullTranslationDAO crowdinDAO;
 
     @Rule
     public WireMockRule wireMockRule = new WireMockRule(options().port(7777));
 
     @BeforeEach
     public void setUp() {
-        crowdinDAO = new CrowdinPullTranslationDAOImpl(logger, "http://localhost:7777","111", "secretApiKey");
+        crowdinDAO = new PullTranslationDAOCrowdin(logger, "http://localhost:7777","111", "secretApiKey");
         wireMockRule.start();
     }
 
