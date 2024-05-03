@@ -47,15 +47,15 @@ public class PullCrowdinMojo extends AbstractCrowdinMojo {
     @Component(hint = "default")
     private DependencyGraphBuilder dependencyGraphBuilder;
 
-    private PullTranslationDAO crowdinDAO;
+    private PullTranslationDAO pullTranslationDAO;
 
-    private final Logger log = new GazelleLogger(getLog());
     private final GitService gitService = new GitService();
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         super.execute();
-        PullTranslationDAO crowdinDAO = getCrowdinPullDAO();
+        Logger log = new GazelleLogger(getLog());
+        PullTranslationDAO crowdinDAO = getCrowdinPullDAO(log);
 
         if (messagesInputDirectory.exists()) {
             log.info("Downloading translations from crowdin (branch : " + gitService.getCurrentGitBranch() + ")");
@@ -302,11 +302,11 @@ public class PullCrowdinMojo extends AbstractCrowdinMojo {
      * Get the DAO to pull files in crowdin (Factory)
      * @return the DAO to push files in crowdin
      */
-    private PullTranslationDAO getCrowdinPullDAO() {
-        if (crowdinDAO == null)
-            crowdinDAO = new PullTranslationDAOCrowdin(log,CrowdinApiUtils.getServerUrl(),
+    private PullTranslationDAO getCrowdinPullDAO(Logger logger) {
+        if (pullTranslationDAO == null)
+            pullTranslationDAO = new PullTranslationDAOCrowdin(logger,CrowdinApiUtils.getServerUrl(),
                     authenticationInfo.getUserName(),
                     authenticationInfo.getPassword());
-        return crowdinDAO;
+        return pullTranslationDAO;
     }
 }
